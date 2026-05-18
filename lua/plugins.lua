@@ -109,17 +109,29 @@ require("lazy").setup({
     { "williamboman/mason.nvim",          config = true },
     { "williamboman/mason-lspconfig.nvim" },
 
+    -- LSP breadcrumbs (current scope in statusline)
+    {
+        "SmiteshP/nvim-navic",
+        dependencies = "neovim/nvim-lspconfig",
+        opts = { highlight = true, separator = "  " },
+    },
+
     -- LSP
     {
         "neovim/nvim-lspconfig",
         dependencies = {
             "williamboman/mason.nvim",
             "williamboman/mason-lspconfig.nvim",
+            "SmiteshP/nvim-navic",
         },
         config = function()
             local lspconfig = require("lspconfig")
+            local navic = require("nvim-navic")
 
-            local on_attach = function(_, bufnr)
+            local on_attach = function(client, bufnr)
+                if client.server_capabilities.documentSymbolProvider then
+                    navic.attach(client, bufnr)
+                end
                 local map = function(keys, func)
                     vim.keymap.set("n", keys, func, { buffer = bufnr })
                 end
@@ -234,8 +246,17 @@ require("lazy").setup({
     -- Status line
     {
         "nvim-lualine/lualine.nvim",
+        dependencies = { "SmiteshP/nvim-navic" },
         config = function()
-            require("lualine").setup({ options = { theme = "auto" } })
+            require("lualine").setup({
+                options = { theme = "auto" },
+                sections = {
+                    lualine_c = {
+                        { "filename" },
+                        { "navic", color_correction = "dynamic" },
+                    },
+                },
+            })
         end,
     },
 
@@ -265,12 +286,23 @@ require("lazy").setup({
         end,
     },
 
+    -- Dependency version viewing
+    {
+        "lvim-tech/lvim-dependencies",
+        dependencies = { "MunifTanjim/nui.nvim", "lvim-tech/lvim-utils" },
+        config = function()
+            local dep = require("lvim-dependencies")
+            dep.setup({})
+        end,
+    },
+
     -- Node.js debug adapter
     {
         "jay-babu/mason-nvim-dap.nvim",
         dependencies = { "williamboman/mason.nvim", "mfussenegger/nvim-dap" },
         config = function()
             require("mason-nvim-dap").setup({
+                automatic_installation = true,
                 ensure_installed = { "js" },
                 handlers = { function() end },
             })
