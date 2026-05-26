@@ -1,4 +1,11 @@
-vim.env.PATH = vim.env.HOME .. "/.cargo/bin:" .. vim.env.PATH
+vim.env.PATH = vim.env.HOME .. "/.cargo/bin:/opt/homebrew/bin:" .. vim.env.PATH
+
+vim.api.nvim_create_autocmd("FileType", {
+    pattern = "json",
+    callback = function()
+        vim.opt_local.formatprg = "jq"
+    end,
+})
 
 vim.opt.number = true
 vim.opt.relativenumber = true

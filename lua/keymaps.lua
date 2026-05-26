@@ -66,3 +66,8 @@ map("n", "<leader>gs", function()
     -- Close the current difftool tab
     vim.cmd("tabclose")
 end, { desc = "Fugitive: Stage file and close tab" })
+
+-- Rest
+vim.keymap.set("n", "<leader>rr", "<cmd>Rest run<cr>")
+vim.keymap.set("n", "<leader>rl", "<cmd>Rest run last<cr>")
+vim.keymap.set("n", "<leader>re", "<cmd>Rest env select<cr>")
