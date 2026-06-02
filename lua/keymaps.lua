@@ -71,3 +71,37 @@ end, { desc = "Fugitive: Stage file and close tab" })
 vim.keymap.set("n", "<leader>rr", "<cmd>Rest run<cr>")
 vim.keymap.set("n", "<leader>rl", "<cmd>Rest run last<cr>")
 vim.keymap.set("n", "<leader>re", "<cmd>Rest env select<cr>")
+
+-- Gitsigns (buffer-local, called from on_attach)
+local M = {}
+
+M.gitsigns_on_attach = function(bufnr)
+    local gs = package.loaded.gitsigns
+    local bmap = function(mode, keys, func, desc)
+        vim.keymap.set(mode, keys, func, { buffer = bufnr, desc = desc })
+    end
+
+    bmap("n", "]c", function()
+        if vim.wo.diff then return "]c" end
+        vim.schedule(function() gs.next_hunk() end)
+        return "<Ignore>"
+    end, "Gitsigns: Next hunk")
+
+    bmap("n", "[c", function()
+        if vim.wo.diff then return "[c" end
+        vim.schedule(function() gs.prev_hunk() end)
+        return "<Ignore>"
+    end, "Gitsigns: Prev hunk")
+
+    bmap({ "n", "v" }, "<leader>hs", gs.stage_hunk,       "Gitsigns: Stage hunk")
+    bmap({ "n", "v" }, "<leader>hr", gs.reset_hunk,       "Gitsigns: Reset hunk")
+    bmap("n",          "<leader>hS", gs.stage_buffer,     "Gitsigns: Stage buffer")
+    bmap("n",          "<leader>hu", gs.undo_stage_hunk,  "Gitsigns: Undo stage hunk")
+    bmap("n",          "<leader>hR", gs.reset_buffer,     "Gitsigns: Reset buffer")
+    bmap("n",          "<leader>hp", gs.preview_hunk,     "Gitsigns: Preview hunk")
+    bmap("n",          "<leader>hb", gs.blame_line,       "Gitsigns: Blame line")
+    bmap("n",          "<leader>hd", gs.diffthis,         "Gitsigns: Diff this")
+    bmap({ "o", "x" }, "ih", ":<C-U>Gitsigns select_hunk<CR>", "Gitsigns: Select hunk")
+end
+
+return M

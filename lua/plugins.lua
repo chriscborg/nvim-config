@@ -51,9 +51,21 @@ require("lazy").setup({
                 ensure_installed = {
                     "lua", "python", "javascript", "typescript",
                     "tsx", "json", "yaml", "markdown", "bash", "swift",
+                    "kotlin",
                 },
             })
         end,
+    },
+
+    -- Sticky scope header (shows enclosing function/class at top of buffer)
+    {
+        "nvim-treesitter/nvim-treesitter-context",
+        dependencies = { "nvim-treesitter/nvim-treesitter" },
+        opts = {
+            max_lines = 3,
+            min_window_height = 20,
+            separator = "─",
+        },
     },
 
     -- Mason: installs LSP servers, linters, formatters
@@ -76,42 +88,42 @@ require("lazy").setup({
             "SmiteshP/nvim-navic",
         },
         config = function()
-            local lspconfig = require("lspconfig")
             local navic = require("nvim-navic")
 
-            local on_attach = function(client, bufnr)
-                if client.server_capabilities.documentSymbolProvider then
-                    navic.attach(client, bufnr)
-                end
-                local map = function(keys, func)
-                    vim.keymap.set("n", keys, func, { buffer = bufnr })
-                end
-                map("gd", vim.lsp.buf.definition)
-                map("gD", vim.lsp.buf.declaration)
-                map("gr", vim.lsp.buf.references)
-                map("gi", vim.lsp.buf.implementation)
-                map("K", vim.lsp.buf.hover)
-                map("<leader>rn", vim.lsp.buf.rename)
-                map("<leader>ca", vim.lsp.buf.code_action)
-            end
+            vim.api.nvim_create_autocmd("LspAttach", {
+                callback = function(ev)
+                    local client = vim.lsp.get_client_by_id(ev.data.client_id)
+                    local bufnr = ev.buf
+                    if client and client.server_capabilities.documentSymbolProvider then
+                        navic.attach(client, bufnr)
+                    end
+                    local map = function(keys, func)
+                        vim.keymap.set("n", keys, func, { buffer = bufnr })
+                    end
+                    map("gd", vim.lsp.buf.definition)
+                    map("gD", vim.lsp.buf.declaration)
+                    map("gr", vim.lsp.buf.references)
+                    map("gi", vim.lsp.buf.implementation)
+                    map("K", vim.lsp.buf.hover)
+                    map("<leader>rn", vim.lsp.buf.rename)
+                    map("<leader>ca", vim.lsp.buf.code_action)
+                end,
+            })
 
-            require("mason-lspconfig").setup({
-                ensure_installed = { "lua_ls", "pyright", "ts_ls" },
-                automatic_installation = true,
-                handlers = {
-                    function(server)
-                        lspconfig[server].setup({ on_attach = on_attach })
-                    end,
-                    ["lua_ls"] = function()
-                        lspconfig.lua_ls.setup({
-                            on_attach = on_attach,
-                            settings = {
-                                Lua = { diagnostics = { globals = { "vim" } } },
-                            },
-                        })
-                    end,
+            vim.lsp.config("lua_ls", {
+                settings = {
+                    Lua = { diagnostics = { globals = { "vim" } } },
                 },
             })
+
+            require("mason-lspconfig").setup({
+                ensure_installed = { "lua_ls", "pyright", "ts_ls", "kotlin_language_server" },
+                automatic_installation = true,
+                automatic_enable = true,
+            })
+
+            -- sourcekit ships with Xcode, not managed by Mason
+            vim.lsp.enable("sourcekit")
         end,
     },
 
@@ -141,7 +153,6 @@ require("lazy").setup({
                     typescript = { "prettier" },
                     lua        = { "stylua" },
                 },
-                format_on_save = { timeout_ms = 500, lsp_fallback = true },
             })
         end,
     },
@@ -211,7 +222,20 @@ require("lazy").setup({
         end,
     },
 
-    { "lewis6991/gitsigns.nvim", config = true },
+    {
+        "lewis6991/gitsigns.nvim",
+        opts = {
+            signs = {
+                add          = { text = "▎" },
+                change       = { text = "▎" },
+                delete       = { text = "" },
+                topdelete    = { text = "" },
+                changedelete = { text = "▎" },
+                untracked    = { text = "▎" },
+            },
+            on_attach = require("keymaps").gitsigns_on_attach,
+        },
+    },
 
     {
         "diegok/live-autoread.nvim",
