@@ -27,7 +27,7 @@ require("lazy").setup({
     {
         "saghen/blink.cmp",
         dependencies = { "saghen/blink.lib" },
-        build = function() require("blink.cmp").build():wait(60000) end,
+        build = function() require("blink.cmp").build():pwait() end,
         opts = {
             sources = {
                 default = { "lazydev", "lsp", "path", "snippets", "buffer" },
@@ -51,7 +51,7 @@ require("lazy").setup({
                 ensure_installed = {
                     "lua", "python", "javascript", "typescript",
                     "tsx", "json", "yaml", "markdown", "bash", "swift",
-                    "kotlin",
+                    "kotlin", "twig", "dart",
                 },
             })
         end,
@@ -116,8 +116,17 @@ require("lazy").setup({
                 },
             })
 
+            vim.lsp.config("twiggy_language_server", {
+                settings = {
+                    twiggy = {
+                        framework = "craft",
+                        phpExecutable = "/opt/homebrew/bin/php",
+                    },
+                },
+            })
+
             require("mason-lspconfig").setup({
-                ensure_installed = { "lua_ls", "pyright", "ts_ls", "kotlin_language_server" },
+                ensure_installed = { "lua_ls", "pyright", "ts_ls", "kotlin_language_server", "twiggy_language_server" },
                 automatic_installation = true,
                 automatic_enable = true,
             })
@@ -271,6 +280,31 @@ require("lazy").setup({
         end,
     },
 
+    -- Dart/Flutter LSP + debug adapter
+    {
+        "akinsho/flutter-tools.nvim",
+        lazy = false,
+        dependencies = { "nvim-lua/plenary.nvim", "mfussenegger/nvim-dap" },
+        config = function()
+            require("flutter-tools").setup({
+                debugger = {
+                    enabled = true,
+                    run_via_dap = true,
+                },
+            })
+
+            -- flutter-tools only registers this adapter as a side effect of
+            -- :FlutterRun/:FlutterAttach. Register it eagerly too so configs
+            -- picked up from .vscode/launch.json (type "dart") work directly
+            -- via dap.continue(), without running a flutter-tools command first.
+            require("dap").adapters.dart = {
+                type = "executable",
+                command = vim.fn.exepath("flutter"),
+                args = { "debug-adapter" },
+            }
+        end,
+    },
+
     -- Node.js debug adapter
     {
         "jay-babu/mason-nvim-dap.nvim",
@@ -327,12 +361,10 @@ require("lazy").setup({
                             local names = vim.tbl_keys(scripts)
                             if #names == 0 then return { "run", "start" } end
                             table.sort(names)
-                            local chosen = coroutine.yield({
-                                type = "select",
-                                title = "npm script",
-                                items = names,
-                                format_item = function(s) return s .. "  →  " .. scripts[s] end,
-                            })
+                            local chosen = require("dap.ui").pick_one(names, "npm script: ", function(s)
+                                return s .. "  →  " .. scripts[s]
+                            end)
+                            if not chosen then return require("dap").ABORT end
                             return { "run", chosen }
                         end,
                         cwd = "${workspaceFolder}",
@@ -341,6 +373,20 @@ require("lazy").setup({
                 }
             end
         end,
+    },
+
+    -- Markdown rendering (headers, code blocks, lists, etc. in normal buffers)
+    {
+        "MeanderingProgrammer/render-markdown.nvim",
+        ft = { "markdown" },
+        dependencies = { "nvim-treesitter/nvim-treesitter", "nvim-tree/nvim-web-devicons" },
+        opts = {},
+    },
+
+    -- Smooth scrolling animation
+    {
+        "karb94/neoscroll.nvim",
+        opts = { easing_function = "quad" },
     },
 
     --rest plugin
