@@ -138,6 +138,9 @@ map("n", "<leader>gs", function()
     vim.cmd("tabclose")
 end, { desc = "Fugitive: Stage file and close tab" })
 
+-- gl to show commit history for the current line (git log -L)
+map("n", "<leader>gl", ":.Gclog<CR>", { desc = "Fugitive: Line history" })
+
 -- Rest
 vim.keymap.set("n", "<leader>rr", "<cmd>Rest run<cr>")
 vim.keymap.set("n", "<leader>rl", "<cmd>Rest run last<cr>")

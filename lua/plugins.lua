@@ -190,6 +190,44 @@ require("lazy").setup({
 
     { "tpope/vim-fugitive" },
 
+    -- Per-file diff navigation over a :Git difftool quickfix list
+    {
+        "jecaro/fugitive-difftool.nvim",
+        dependencies = { "tpope/vim-fugitive" },
+        config = function()
+            -- Always compare with "..." (merge-base), not "..": two-dot
+            -- ranges make fugitive's difftool quickfix resolve both diff
+            -- sides to the same commit, so every file appears unchanged.
+            local difftool = require("fugitive-difftool")
+            vim.api.nvim_create_user_command("Gcfir", difftool.git_cfir, {}) -- jump to first
+            vim.api.nvim_create_user_command("Gcla", difftool.git_cla, {})   -- jump to last
+            vim.api.nvim_create_user_command("Gcn", difftool.git_cn, {})     -- next file
+            vim.api.nvim_create_user_command("Gcp", difftool.git_cp, {})     -- previous file
+            vim.api.nvim_create_user_command("Gcc", difftool.git_cc, {})     -- reload current
+
+            -- "dv" on a file under the cursor in the difftool quickfix list,
+            -- mirroring fugitive's own "dv" in the status buffer. git_cc()
+            -- keys off the quickfix list's current idx rather than the
+            -- cursor line, so point idx at the cursor first.
+            vim.api.nvim_create_autocmd("FileType", {
+                pattern = "qf",
+                callback = function(ev)
+                    vim.keymap.set("n", "dv", function()
+                        local ok, items = pcall(function()
+                            return vim.fn.getqflist({ context = 0 }).context.items
+                        end)
+                        if not ok or not items then
+                            vim.notify("Not a :Git difftool quickfix list", vim.log.levels.WARN)
+                            return
+                        end
+                        vim.fn.setqflist({}, "a", { idx = vim.fn.line(".") })
+                        difftool.git_cc()
+                    end, { buffer = ev.buf, desc = "Fugitive difftool: diff file under cursor" })
+                end,
+            })
+        end,
+    },
+
     -- File manager
     {
         "mikavilpas/yazi.nvim",
@@ -367,6 +405,45 @@ require("lazy").setup({
                             if not chosen then return require("dap").ABORT end
                             return { "run", chosen }
                         end,
+                        cwd = "${workspaceFolder}",
+                        console = "integratedTerminal",
+                    },
+                    {
+                        type = "pwa-node",
+                        request = "launch",
+                        name = "Debug Jest test",
+                        runtimeExecutable = "npx",
+                        runtimeArgs = function()
+                            local file = vim.fn.expand("%:p")
+                            local args = { "jest", "--runInBand", file }
+                            local pattern = vim.fn.input("Test name pattern (blank = whole file): ")
+                            if pattern ~= "" then
+                                table.insert(args, "-t")
+                                table.insert(args, pattern)
+                            end
+                            return args
+                        end,
+                        cwd = "${workspaceFolder}",
+                        console = "integratedTerminal",
+                    },
+                    {
+                        type = "pwa-node",
+                        request = "launch",
+                        name = "Debug Jest E2E test",
+                        runtimeExecutable = "npx",
+                        runtimeArgs = function()
+                            local file = vim.fn.expand("%:p")
+                            -- testTimeout=0 disables Jest's timeout, since it keeps counting wall-clock
+                            -- time while you're paused at a breakpoint and would otherwise fail the test.
+                            local args = { "jest", "--runInBand", "--testTimeout=0", file }
+                            local pattern = vim.fn.input("Test name pattern (blank = whole file): ")
+                            if pattern ~= "" then
+                                table.insert(args, "-t")
+                                table.insert(args, pattern)
+                            end
+                            return args
+                        end,
+                        env = { E2E_INTEGRATION = "true" },
                         cwd = "${workspaceFolder}",
                         console = "integratedTerminal",
                     },
